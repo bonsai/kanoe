@@ -105,6 +105,8 @@ class PoseController {
                     this.camera.start();
                     this.isRunning = true;
                     this.updateStatus('📷 ポーズ検出：準備完了', 'green');
+                    // Dispatch event to notify other scripts that pose controller is ready
+                    window.dispatchEvent(new Event('poseControllerReady'));
                     resolve();
                 };
                 
@@ -148,14 +150,14 @@ class PoseController {
     drawLandmarks(landmarks) {
         const ctx = this.outputCtx;
         
-        // Draw connections
+        // Draw connections (MediaPipe Pose landmark indices)
         const connections = [
-            [0, 1], [1, 2], [2, 3], [3, 7],  // Head
-            [0, 4], [4, 5], [5, 6],          // Neck to shoulders
-            [9, 10],                         // Shoulders
-            [11, 12], [12, 14], [14, 16],   // Left arm
-            [11, 13], [13, 15],              // Left arm continuation
-            [12, 11],                        // Shoulder connection
+            [0, 1], [1, 2], [2, 3], [3, 7],  // Left face outline
+            [0, 4], [4, 5], [5, 6],          // Right face outline
+            [9, 10],                         // Mouth
+            [11, 12],                        // Shoulders
+            [11, 13], [13, 15],              // Left arm
+            [12, 14], [14, 16]               // Right arm
         ];
         
         ctx.strokeStyle = '#00FF00';
@@ -186,10 +188,6 @@ class PoseController {
     detectHeadGesture(landmarks) {
         // Check if we have the necessary landmarks
         const nose = landmarks[0];
-        const leftEye = landmarks[1];
-        const rightEye = landmarks[2];
-        const leftEar = landmarks[3];
-        const rightEar = landmarks[4];
         const leftShoulder = landmarks[11];
         const rightShoulder = landmarks[12];
         
@@ -215,17 +213,19 @@ class PoseController {
         
         const headOffsetX = nose.x - shoulderCenter.x;
         const headOffsetY = nose.y - shoulderCenter.y;
-        
+
         // Store head position
         this.headPosition = {
             x: headOffsetX,
             y: headOffsetY,
             z: nose.z || 0
         };
-        
+
         // Detect gestures
+        // Note: In MediaPipe coordinates, y increases downward
+        // Ducking (head down) means nose.y > shoulder.y (positive offset)
         const gesture = {
-            isDucking: headOffsetY < -this.thresholds.headDown,
+            isDucking: headOffsetY > this.thresholds.headDown,
             steerLeft: headOffsetX < -this.thresholds.headLeft,
             steerRight: headOffsetX > this.thresholds.headRight
         };

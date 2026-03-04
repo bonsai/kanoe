@@ -3,6 +3,12 @@
 // Adds head movement controls to the Kanoe game
 // ============================================
 
+// Steering constants
+const STEERING_X_LIMIT = 35;
+const TILT_Z_LIMIT = 0.3;
+const TILT_INCREMENT = 0.05;
+const TILT_DAMPING_FACTOR = 0.9;
+
 // Steering state
 let steeringState = {
     left: false,
@@ -36,32 +42,32 @@ function applySteering() {
     
     if (steeringState.left) {
         window.canoeGroup.position.x = Math.max(
-            -35,
+            -STEERING_X_LIMIT,
             window.canoeGroup.position.x - steeringState.speed
         );
         // Tilt canoe when steering
         window.canoeGroup.rotation.z = Math.min(
-            0.3,
-            window.canoeGroup.rotation.z + 0.05
+            TILT_Z_LIMIT,
+            window.canoeGroup.rotation.z + TILT_INCREMENT
         );
     } else if (steeringState.right) {
         window.canoeGroup.position.x = Math.min(
-            35,
+            STEERING_X_LIMIT,
             window.canoeGroup.position.x + steeringState.speed
         );
         // Tilt canoe when steering
         window.canoeGroup.rotation.z = Math.max(
-            -0.3,
-            window.canoeGroup.rotation.z - 0.05
+            -TILT_Z_LIMIT,
+            window.canoeGroup.rotation.z - TILT_INCREMENT
         );
     } else {
         // Return to center rotation
-        window.canoeGroup.rotation.z *= 0.9;
+        window.canoeGroup.rotation.z *= TILT_DAMPING_FACTOR;
     }
 }
 
-// Wait for game to load and setup head controls
-setTimeout(() => {
+// Wait for pose controller to be ready (event-driven initialization)
+window.addEventListener('poseControllerReady', () => {
     setupHeadControls();
     console.log('Head controls initialized');
-}, 1000);
+});

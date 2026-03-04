@@ -1,4 +1,4 @@
-﻿// 橋の高さ・幅データ（idで紐付け）
+// 橋の高さ・幅データ（idで紐付け）
 const bridgeDimensions = {
     1: { height: 8.0, width: 35.0 },
     2: { height: 6.5, width: 28.0 },
