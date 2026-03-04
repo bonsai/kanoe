@@ -315,13 +315,15 @@ function checkBridgeDuck() {
                 gameState.score += 100;
                 gameState.currentBridgeIndex++;
                 updateBridgeInfo();
-                // 新しい橋を追加
-                if (gameState.currentBridgeIndex < bridgeData.length) {
+                // 次の橋を生成（重複防止）
+                if (nextSpawnIndex < bridgeData.length) {
+                    const farthestBridge = bridges.reduce((min, b) => b.group.position.z < min.group.position.z ? b : min);
                     const newBridge = createBridge(
-                        bridgeData[gameState.currentBridgeIndex],
-                        bridge.group.position.z - gameState.bridgeSpacing
+                        bridgeData[nextSpawnIndex],
+                        farthestBridge.group.position.z - gameState.bridgeSpacing
                     );
                     bridges.push(newBridge);
+                    nextSpawnIndex++;
                 }
             }
         }
@@ -443,6 +445,7 @@ function restartGame() {
         duckingHeight: 0.8,
         bridgeSpacing: 50
     };
+    nextSpawnIndex = 3; // Reset spawn index
     
     gameOverElement.style.display = 'none';
     duckingIndicator.style.display = 'none';
