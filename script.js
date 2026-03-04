@@ -1,4 +1,4 @@
-﻿// 橋の高さ・幅データ（idで紐付け）
+// 橋の高さ・幅データ（idで紐付け）
 const bridgeDimensions = {
     1: { height: 8.0, width: 35.0 },
     2: { height: 6.5, width: 28.0 },
@@ -49,6 +49,9 @@ const duckBtn = document.getElementById('duckBtn');
 
 // 橋データ（初期は空、fetchで取得）
 let bridgeData = [];
+
+// 波アニメーション管理用
+let wavesAnimationId = null;
 
 // JSONを読み込んでからゲーム初期化
 async function loadBridgeDataAndStart() {
@@ -139,14 +142,14 @@ function createRiver() {
         opacity: 0.3,
         wireframe: false
     });
-    const waves = new THREE.Mesh(waveGeometry, waveMaterial);
+    window.wavesMesh = new THREE.Mesh(waveGeometry, waveMaterial);
     waves.rotation.x = -Math.PI / 2;
     waves.position.y = 0.1;
-    scene.add(waves);
+    scene.add(window.wavesMesh);
 
     // 波のアニメーション
     function animateWaves() {
-        const positions = waves.geometry.attributes.position;
+        const positions = window.wavesMesh.geometry.attributes.position;
         const time = Date.now() * 0.001;
         
         for (let i = 0; i < positions.count; i++) {
@@ -156,7 +159,7 @@ function createRiver() {
             positions.setY(i, y);
         }
         positions.needsUpdate = true;
-        requestAnimationFrame(animateWaves);
+        wavesAnimationId = requestAnimationFrame(animateWaves);
     }
     animateWaves();
 }
@@ -409,8 +412,21 @@ function gameOver() {
 // ゲーム再開
 function restartGame() {
     // シーンをクリア
+    if (wavesAnimationId) {
+        cancelAnimationFrame(wavesAnimationId);
+        wavesAnimationId = null;
+    }
     while(scene.children.length > 0) {
-        scene.remove(scene.children[0]);
+        const child = scene.children[0];
+        scene.remove(child);
+        if (child instanceof THREE.Mesh) {
+            child.geometry.dispose();
+            if (Array.isArray(child.material)) {
+                child.material.forEach(m => m.dispose());
+            } else {
+                child.material.dispose();
+            }
+        }
     }
     
     // 状態リセット
@@ -538,10 +554,7 @@ window.addEventListener('keyup', (e) => {
 });
 
 // 海アニメーション用要素をbody直下に追加
-const seaAnimation = document.createElement('div');
-seaAnimation.id = 'seaAnimation';
-seaAnimation.innerHTML = '<div class="sea-text">海に到着！<br>おつかれさまでした</div>';
-document.body.appendChild(seaAnimation);
+const seaAnimation = document.getElementById('seaAnimation'); // Already exists in HTML
 
 // 海アニメーション
 function showSeaAnimation() {
