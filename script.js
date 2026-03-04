@@ -52,6 +52,7 @@ let bridgeData = [];
 
 // 波アニメーション管理用
 let wavesAnimationId = null;
+let wavesMesh = null;
 let wavesMesh = null; // Global reference for cleanup
 
 // JSONを読み込んでからゲーム初期化
