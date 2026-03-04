@@ -52,6 +52,7 @@ let bridgeData = [];
 
 // 波アニメーション管理用
 let wavesAnimationId = null;
+let wavesMesh = null; // Global reference for cleanup
 
 // JSONを読み込んでからゲーム初期化
 async function loadBridgeDataAndStart() {
@@ -112,7 +113,8 @@ function initThreeJS() {
     scene.add(directionalLight);
 
     // 川を作成
-    createRiver();
+    const globalWaves = initializeWaves();
+    createRiver(globalWaves);
     
     // カヌーを作成
     createCanoe();
@@ -422,6 +424,10 @@ function restartGame() {
         const child = scene.children[0];
         scene.remove(child);
         if (child instanceof THREE.Mesh) {
+            // Clear waves reference if this is the waves mesh
+            if (child === wavesMesh) {
+                wavesMesh = null;
+            }
             child.geometry.dispose();
             if (Array.isArray(child.material)) {
                 child.material.forEach(m => m.dispose());
