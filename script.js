@@ -143,8 +143,8 @@ function createRiver() {
         wireframe: false
     });
     window.wavesMesh = new THREE.Mesh(waveGeometry, waveMaterial);
-    waves.rotation.x = -Math.PI / 2;
-    waves.position.y = 0.1;
+    window.wavesMesh.rotation.x = -Math.PI / 2;
+    window.wavesMesh.position.y = 0.1;
     scene.add(window.wavesMesh);
 
     // 波のアニメーション
