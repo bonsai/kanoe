@@ -71,8 +71,8 @@ async function loadBridgeDataAndStart() {
         updateBridgeInfo();
         animate();
     } catch (e) {
-        nextBridgeElement.innerHTML = '橋データの読み込みに失敗しました';
-        console.error(e);
+        console.error('Failed to load bridges:', e);
+        nextBridgeElement.innerHTML = '橋データの読み込みに失敗しました：<br>' + e.message;
     }
 }
 
@@ -572,6 +572,12 @@ function showSeaAnimation() {
         }
     }
     animateSea();
+}
+
+// Restart button event listener
+const restartBtn = document.getElementById('restartBtn');
+if (restartBtn) {
+    restartBtn.addEventListener('click', restartGame);
 }
 
 window.addEventListener('DOMContentLoaded', () => {
