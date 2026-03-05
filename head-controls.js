@@ -8,12 +8,13 @@ const STEERING_X_LIMIT = 35;
 const TILT_Z_LIMIT = 0.3;
 const TILT_INCREMENT = 0.05;
 const TILT_DAMPING_FACTOR = 0.9;
+const STEERING_SPEED = 0.08; // Slower steering speed
 
 // Steering state
 let steeringState = {
     left: false,
     right: false,
-    speed: 0.15
+    speed: STEERING_SPEED
 };
 
 // Setup pose detection callback

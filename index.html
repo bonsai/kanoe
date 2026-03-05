@@ -5,6 +5,54 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>長良川カヌー川下りゲーム 3D</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        #debugPanel {
+            position: fixed;
+            top: 100px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            z-index: 200;
+            max-width: 300px;
+            max-height: 400px;
+            overflow-y: auto;
+            display: none;
+        }
+        #debugPanel.active {
+            display: block;
+        }
+        #debugPanel h3 {
+            margin: 0 0 10px 0;
+            color: #ffff00;
+        }
+        .debug-line {
+            margin: 3px 0;
+        }
+        .error { color: #ff0000; }
+        .warning { color: #ffaa00; }
+        .success { color: #00ff00; }
+        #debugToggle {
+            position: fixed;
+            top: 60px;
+            left: 20px;
+            z-index: 201;
+            background: rgba(0, 0, 0, 0.7);
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            font-family: monospace;
+        }
+        #debugToggle:hover {
+            background: rgba(0, 255, 0, 0.2);
+        }
+    </style>
 </head>
 <body>
     <div id="gameContainer">
@@ -28,7 +76,8 @@
         <div id="bridgeInfo">
             <div id="nextBridge">次の橋を準備中...</div>
         </div>
-          <div id="controls">
+        
+        <div id="controls">
             <button id="paddleBtn" class="control-btn">漕ぐ ⛵<br><span class="key-hint">(↑キー/W)</span></button>
             <button id="duckBtn" class="control-btn">しゃがむ ⬇️<br><span class="key-hint">(↓キー/S)</span></button>
         </div>
@@ -56,7 +105,17 @@
             <p>最終スコア：<span id="finalScore">0</span></p>
             <button id="restartBtn" class="control-btn restart-btn">もう一度プレイ</button>
         </div>
+        
+        <!-- Debug Toggle Button -->
+        <button id="debugToggle">🐛 DEBUG</button>
+        
+        <!-- Debug Panel -->
+        <div id="debugPanel">
+            <h3>🐛 デバッグ情報</h3>
+            <div id="debugLog"></div>
+        </div>
     </div>
+    
     <div id="seaAnimation">
         <div class="sea-text">海に到着！<br>おつかれさまでした</div>
     </div>
@@ -66,8 +125,88 @@
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+    
+    <script>
+        // Debug mode toggle
+        const debugPanel = document.getElementById('debugPanel');
+        const debugToggle = document.getElementById('debugToggle');
+        const debugLog = document.getElementById('debugLog');
+        
+        // Global debug mode flag
+        window.debugMode = false;
+        
+        // Check URL parameter for debug mode
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('debug') === 'true') {
+            window.debugMode = true;
+            debugPanel.classList.add('active');
+        }
+        
+        debugToggle.addEventListener('click', () => {
+            window.debugMode = !window.debugMode;
+            debugPanel.classList.toggle('active');
+            console.log('デバッグモード:', window.debugMode ? 'ON' : 'OFF');
+        });
+        
+        // Debug logger
+        const originalConsole = {
+            log: console.log,
+            error: console.error,
+            warn: console.warn
+        };
+        
+        function addDebugLine(message, type = 'log') {
+            if (!window.debugMode) return;
+            
+            const line = document.createElement('div');
+            line.className = 'debug-line ' + type;
+            const timestamp = new Date().toLocaleTimeString();
+            line.textContent = `[${timestamp}] ${message}`;
+            debugLog.appendChild(line);
+            debugLog.scrollTop = debugLog.scrollHeight;
+            
+            // Keep only last 50 lines
+            while (debugLog.children.length > 50) {
+                debugLog.removeChild(debugLog.firstChild);
+            }
+        }
+        
+        console.log = function(...args) {
+            originalConsole.log.apply(console, args);
+            addDebugLine(args.join(' '), 'success');
+        };
+        
+        console.error = function(...args) {
+            originalConsole.error.apply(console, args);
+            addDebugLine('ERROR: ' + args.join(' '), 'error');
+        };
+        
+        console.warn = function(...args) {
+            originalConsole.warn.apply(console, args);
+            addDebugLine('WARN: ' + args.join(' '), 'warning');
+        };
+        
+        // Catch unhandled errors
+        window.addEventListener('error', (e) => {
+            addDebugLine(`ERROR: ${e.message} at ${e.filename}:${e.lineno}`, 'error');
+        });
+        
+        window.addEventListener('unhandledrejection', (e) => {
+            addDebugLine(`PROMISE ERROR: ${e.reason}`, 'error');
+        });
+        
+        if (window.debugMode) {
+            addDebugLine('デバッグモード起動', 'success');
+        }
+    </script>
+    
+    <!-- Game Scripts (order matters!) -->
+    <script src="game-state.js"></script>
+    <script src="scene-setup.js"></script>
+    <script src="bridge-manager.js"></script>
+    <script src="game-logic.js"></script>
     <script src="pose-controller.js"></script>
     <script src="head-controls.js"></script>
-    <script src="script.js"></script>
+    <script src="game-loop.js"></script>
 </body>
 </html>
