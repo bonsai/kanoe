@@ -18,17 +18,29 @@ class PoseController {
             z: 0
         };
         
+        // Previous nose position for relative movement detection
+        this.previousNoseY = null;
+        this.noseYHistory = [];
+        this.noseYHistorySize = 5;
+        
+        // Mouth tracking for paddling
+        this.previousMouthOpen = false;
+        this.mouthOpenCount = 0;
+        this.lastPaddleTime = 0;
+        
         // Thresholds for head movements
         this.thresholds = {
-            headDown: 0.15,      // Nose to shoulder distance threshold
-            headLeft: 0.1,       // Head tilt left threshold
-            headRight: 0.1,      // Head tilt right threshold
-            confidence: 0.5      // Minimum confidence for detection
+            noseDownMovement: 0.02,  // Relative downward movement threshold
+            mouthOpenDistance: 0.02, // Distance between upper and lower lip
+            headLeft: 0.1,           // Head tilt left threshold
+            headRight: 0.1,          // Head tilt right threshold
+            confidence: 0.5          // Minimum confidence for detection
         };
         
         // Current gesture state
         this.currentGesture = {
             isDucking: false,
+            isPaddling: false,
             steerLeft: false,
             steerRight: false
         };
@@ -190,6 +202,8 @@ class PoseController {
         const nose = landmarks[0];
         const leftShoulder = landmarks[11];
         const rightShoulder = landmarks[12];
+        const upperLip = landmarks[10];  // Upper lip
+        const lowerLip = landmarks[9];   // Lower lip (mouth)
         
         if (!nose || !leftShoulder || !rightShoulder) {
             return;
@@ -212,32 +226,79 @@ class PoseController {
         };
         
         const headOffsetX = nose.x - shoulderCenter.x;
-        const headOffsetY = nose.y - shoulderCenter.y;
-
+        
         // Store head position
         this.headPosition = {
             x: headOffsetX,
-            y: headOffsetY,
+            y: nose.y,
             z: nose.z || 0
         };
 
-        // Detect gestures
-        // Note: In MediaPipe coordinates, y increases downward
-        // Ducking (head down) means nose.y > shoulder.y (positive offset)
+        // === 1. Detect nose downward movement (relative) ===
+        let isDucking = false;
+        
+        // Add current nose Y to history
+        this.noseYHistory.push(nose.y);
+        if (this.noseYHistory.length > this.noseYHistorySize) {
+            this.noseYHistory.shift();
+        }
+        
+        // Calculate average of previous positions
+        if (this.noseYHistory.length >= 3) {
+            const recentAvg = this.noseYHistory.slice(0, -1).reduce((a, b) => a + b, 0) / (this.noseYHistory.length - 1);
+            const currentY = nose.y;
+            
+            // If nose moved down significantly (y increased in MediaPipe coords)
+            if (currentY - recentAvg > this.thresholds.noseDownMovement) {
+                isDucking = true;
+            }
+        }
+        
+        // === 2. Detect mouth opening (paddling) ===
+        let isPaddling = false;
+        
+        if (upperLip && lowerLip && upperLip.visibility > 0.5 && lowerLip.visibility > 0.5) {
+            // Calculate vertical distance between lips
+            const mouthOpenDistance = Math.abs(lowerLip.y - upperLip.y);
+            const isMouthOpen = mouthOpenDistance > this.thresholds.mouthOpenDistance;
+            
+            // Detect mouth opening/closing cycle (paddling motion)
+            if (isMouthOpen && !this.previousMouthOpen) {
+                // Mouth just opened
+                this.mouthOpenCount++;
+                const currentTime = Date.now();
+                
+                // Trigger paddle if mouth opened (cooldown: 500ms)
+                if (currentTime - this.lastPaddleTime > 500) {
+                    isPaddling = true;
+                    this.lastPaddleTime = currentTime;
+                }
+            }
+            
+            this.previousMouthOpen = isMouthOpen;
+        }
+        
+        // === 3. Detect head tilt (steering) ===
         const gesture = {
-            isDucking: headOffsetY > this.thresholds.headDown,
+            isDucking: isDucking,
+            isPaddling: isPaddling,
             steerLeft: headOffsetX < -this.thresholds.headLeft,
             steerRight: headOffsetX > this.thresholds.headRight
         };
         
-        // Add to history for smoothing
-        this.gestureHistory.push(gesture);
+        // Add to history for smoothing (except paddling which should be immediate)
+        this.gestureHistory.push({
+            isDucking: gesture.isDucking,
+            steerLeft: gesture.steerLeft,
+            steerRight: gesture.steerRight
+        });
         if (this.gestureHistory.length > this.historySize) {
             this.gestureHistory.shift();
         }
         
         // Smooth gestures (majority vote)
         const smoothedGesture = this.smoothGesture();
+        smoothedGesture.isPaddling = gesture.isPaddling; // Don't smooth paddling
         
         // Update current gesture
         this.currentGesture = smoothedGesture;
@@ -267,6 +328,7 @@ class PoseController {
         if (!this.statusElement) return;
         
         const statusParts = [];
+        if (gesture.isPaddling) statusParts.push('⛵ 漕ぐ');
         if (gesture.isDucking) statusParts.push('👇 しゃがみ');
         if (gesture.steerLeft) statusParts.push('👈 左');
         if (gesture.steerRight) statusParts.push('👉 右');

@@ -22,11 +22,17 @@ function setupHeadControls() {
         window.poseController.setCallback((gesture) => {
             if (gameState.isGameOver) return;
             
-            // Handle ducking (head down)
+            // Handle ducking (nose moving down)
             if (gesture.isDucking) {
                 duck(true);
             } else {
                 duck(false);
+            }
+            
+            // Handle paddling (mouth opening)
+            if (gesture.isPaddling) {
+                // Increase speed when mouth opens
+                gameState.speed = Math.min(gameState.speed + 0.2, 5.0);
             }
             
             // Handle steering (head left/right)
